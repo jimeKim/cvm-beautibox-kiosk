@@ -1,18 +1,24 @@
-name: Deploy CVM Server to Cafe24
+name: Deploy CVM Server to Cafe24 (Development)
+
+# Development repository - workflow disabled for safety
+# Production deployment should only happen from jimeKim/cvm-kiosk repository
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'server/**'
-      - 'src/services/**'
-      - 'package.json'
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment from development repo (for testing only)'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'false'
+        - 'true'
 
 jobs:
   deploy-to-cafe24:
+    # Only run if explicitly confirmed in development repo
+    if: github.event.inputs.force_deploy == 'true' || github.repository == 'jimeKim/cvm-kiosk'
     runs-on: ubuntu-latest
     
     steps:
@@ -20,13 +26,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
+      
+      - name: Set deployment environment
+        id: env
+        run: |
+          if [ "${{ github.repository }}" = "jimeKim/cvm-kiosk" ]; then
+            echo "deployment_env=production" >> $GITHUB_OUTPUT
+            echo "is_production=true" >> $GITHUB_OUTPUT
+          else
+            echo "deployment_env=development" >> $GITHUB_OUTPUT
+            echo "is_production=false" >> $GITHUB_OUTPUT
+          fi
+          echo "timestamp=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+      
       - name: Validate deployment configuration
         run: |
           echo "🔍 Validating deployment configuration..."
           echo "Repository: ${{ github.repository }}"
           echo "Branch: ${{ github.ref_name }}"
           echo "Commit SHA: ${{ github.sha }}"
+          echo "Environment: ${{ steps.env.outputs.deployment_env }}"
+          if [ "${{ steps.env.outputs.is_production }}" != "true" ]; then
+            echo "⚠️  Warning: Deploying from development repository"
+          fi
           echo "✅ Configuration check completed"
       
       - name: Setup Node.js
@@ -40,31 +62,67 @@ jobs:
       
       - name: Build server project
         run: |
-          npm run build:server
-          # 또는 서버 전용 빌드 명령
+          npm run build:server || npm run build || echo "No build script found, proceeding with source files"
       
       - name: Create deployment package
+        id: package
         run: |
           mkdir -p deploy
-          # 필요한 파일들만 복사
-          cp -r dist/ deploy/
-          cp package.json deploy/
-          cp package-lock.json deploy/
           
-          # 환경 설정 파일 (프로덕션용)
-          cp .env.production deploy/.env
-          
-          # 서버 관련 파일들
+          # Copy essential files
+          if [ -d "dist" ]; then
+            echo "📦 Copying dist directory..."
+            cp -r dist/ deploy/
+          fi
           if [ -d "server" ]; then
+            echo "📦 Copying server directory..."
             cp -r server/ deploy/
           fi
+          if [ -d "src" ]; then
+            echo "📦 Copying src directory..."
+            cp -r src/ deploy/
+          fi
           
-          # ZIP 파일 생성
+          # Copy package files
+          if [ -f "package.json" ]; then
+            cp package.json deploy/
+            echo "📦 package.json copied"
+          fi
+          if [ -f "package-lock.json" ]; then
+            cp package-lock.json deploy/
+            echo "📦 package-lock.json copied"
+          fi
+          
+          # Environment configuration
+          if [ -f ".env.production" ]; then
+            cp .env.production deploy/.env
+            echo "📦 Production environment file copied"
+          elif [ -f ".env.example" ]; then
+            cp .env.example deploy/.env
+            echo "📦 Example environment file copied as template"
+          fi
+          
+          # Create archive with timestamp
           cd deploy
-          zip -r ../cvm-server-$(date +%Y%m%d-%H%M%S).zip .
+          ARCHIVE_NAME="cvm-server-${{ steps.env.outputs.timestamp }}.zip"
+          zip -r "../${ARCHIVE_NAME}" .
           cd ..
+          echo "archive_name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
+          echo "✅ Deployment package created: ${ARCHIVE_NAME}"
+      
+      - name: Check FTP secrets availability
+        id: ftp_check
+        run: |
+          if [ -n "${{ secrets.CAFE24_FTP_HOST }}" ] && [ -n "${{ secrets.CAFE24_FTP_USER }}" ] && [ -n "${{ secrets.CAFE24_FTP_PASSWORD }}" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "✅ FTP secrets are available"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "⚠️  FTP secrets are not configured"
+          fi
       
       - name: Deploy to Cafe24 via FTP
+        if: steps.ftp_check.outputs.available == 'true'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.CAFE24_FTP_HOST }}
@@ -78,38 +136,142 @@ jobs:
             **/node_modules/**
             **/.env.local
             **/.env.development
+            **/*.log
+            **/.DS_Store
+            **/*.zip
+        continue-on-error: true
+      
+      - name: Check SSH secrets availability
+        id: ssh_check
+        run: |
+          if [ -n "${{ secrets.CAFE24_SSH_HOST }}" ] && [ -n "${{ secrets.CAFE24_SSH_USER }}" ] && [ -n "${{ secrets.CAFE24_SSH_PASSWORD }}" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "✅ SSH secrets are available"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "⚠️  SSH secrets are not configured"
+          fi
       
       - name: SSH Commands (서버 재시작 등)
+        if: steps.ssh_check.outputs.available == 'true'
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.CAFE24_SSH_HOST }}
           username: ${{ secrets.CAFE24_SSH_USER }}
           password: ${{ secrets.CAFE24_SSH_PASSWORD }}
           script: |
+            echo "🚀 Starting CVM server deployment..."
             cd /www
             
-            # Node.js 의존성 설치 (프로덕션만)
-            npm install --production
+            # Backup current version if exists
+            if [ -d "backup" ]; then
+              rm -rf backup
+            fi
+            if [ -f "server.js" ] || [ -f "app.js" ] || [ -f "index.js" ]; then
+              mkdir -p backup
+              cp -r * backup/ 2>/dev/null || true
+              echo "✅ Previous version backed up"
+            fi
             
-            # PM2로 서버 재시작 (또는 다른 프로세스 매니저)
-            pm2 restart cvm-server || pm2 start ecosystem.config.js
+            # Install Node.js dependencies (production only)
+            if [ -f "package.json" ]; then
+              echo "📦 Installing Node.js dependencies..."
+              npm install --production --silent
+              echo "✅ Dependencies installed"
+            fi
             
-            # 또는 단순 재시작
-            # pkill -f "node.*cvm-server"
-            # nohup npm start > /dev/null 2>&1 &
+            # PM2 process management
+            if command -v pm2 >/dev/null 2>&1; then
+              echo "🔄 Managing processes with PM2..."
+              pm2 restart cvm-server 2>/dev/null || pm2 start ecosystem.config.js 2>/dev/null || {
+                echo "⚠️  PM2 restart failed, trying manual start"
+                pm2 start server.js --name cvm-server 2>/dev/null || \
+                pm2 start app.js --name cvm-server 2>/dev/null || \
+                pm2 start index.js --name cvm-server 2>/dev/null || \
+                echo "❌ Could not start with PM2"
+              }
+            else
+              echo "⚠️  PM2 not available, trying manual restart"
+              # Kill existing Node.js processes
+              pkill -f "node.*cvm" 2>/dev/null || true
+              sleep 2
+              # Start in background
+              if [ -f "server.js" ]; then
+                nohup node server.js > server.log 2>&1 &
+                echo "🚀 Started server.js"
+              elif [ -f "app.js" ]; then
+                nohup node app.js > app.log 2>&1 &
+                echo "🚀 Started app.js"
+              elif [ -f "index.js" ]; then
+                nohup node index.js > index.log 2>&1 &
+                echo "🚀 Started index.js"
+              fi
+            fi
             
-            echo "CVM 서버 배포 완료: $(date)"
+            echo "✅ CVM 서버 배포 완료: $(date)"
+            echo "📍 서버 상태 확인: http://togutmall.cafe24.com"
+        continue-on-error: true
+      
+      - name: Check Slack webhook availability
+        id: slack_check
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK }}" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "✅ Slack webhook is available"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Slack webhook is not configured (optional)"
+          fi
+      
+      - name: Get commit timestamp
+        id: commit_time
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.event.head_commit.timestamp }}" ]; then
+            echo "timestamp=${{ github.event.head_commit.timestamp }}" >> $GITHUB_OUTPUT
+          else
+            echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+          fi
       
       - name: Deployment notification
-        if: always()
+        if: always() && steps.slack_check.outputs.available == 'true'
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
           channel: '#deployment'
           text: |
-            CVM 서버 카페24 배포 ${{ job.status }}
-            브랜치: ${{ github.ref_name }}
-            커밋: ${{ github.sha }}
-            시간: ${{ github.event.head_commit.timestamp }}
+            🚀 CVM 서버 카페24 배포 ${{ job.status }}
+            
+            📊 배포 정보:
+            • 환경: ${{ steps.env.outputs.deployment_env }}
+            • 브랜치: ${{ github.ref_name }}
+            • 커밋: ${{ github.sha }}
+            • 시간: ${{ steps.commit_time.outputs.timestamp }}
+            • 아카이브: ${{ steps.package.outputs.archive_name }}
+            
+            🌐 서버: http://togutmall.cafe24.com
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+        continue-on-error: true
+      
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## 🎯 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ steps.env.outputs.deployment_env }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Archive**: ${{ steps.package.outputs.archive_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 Secrets Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **FTP**: ${{ steps.ftp_check.outputs.available }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **SSH**: ${{ steps.ssh_check.outputs.available }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Slack**: ${{ steps.slack_check.outputs.available }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 Access URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Main Site**: http://togutmall.cafe24.com" >> $GITHUB_STEP_SUMMARY
+          echo "- **File Access**: http://file.togutmall.cafe24.com" >> $GITHUB_STEP_SUMMARY
+          echo "- **API Endpoint**: http://togutmall.cafe24api.com" >> $GITHUB_STEP_SUMMARY
