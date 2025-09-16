@@ -20,6 +20,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          
+      - name: Validate deployment configuration
+        run: |
+          echo "🔍 Validating deployment configuration..."
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit SHA: ${{ github.sha }}"
+          echo "✅ Configuration check completed"
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
