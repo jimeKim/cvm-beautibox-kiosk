@@ -1,0 +1,56 @@
+{
+  "name": "cvm-beautibox-kiosk",
+  "version": "2.7.2",
+  "description": "CVM BeautiBox - 화장품 자동판매기용 Electron 기반 키오스크 애플리케이션 (React + TypeScript + 하드웨어 통합)",
+  "private": false,
+  "main": "cvm-app/electron/main-kiosk-simple.cjs",
+  "homepage": "https://github.com/jimeKim/cvm-beautibox-kiosk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jimeKim/cvm-beautibox-kiosk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jimeKim/cvm-beautibox-kiosk/issues"
+  },
+  "keywords": [
+    "cvm",
+    "cosmetic",
+    "vending-machine",
+    "kiosk",
+    "electron",
+    "react",
+    "typescript",
+    "hardware-integration",
+    "touch-screen",
+    "pos-system",
+    "arduino",
+    "printer",
+    "camera",
+    "beautibox",
+    "retail",
+    "automation"
+  ],
+  "author": {
+    "name": "CVM Development Team",
+    "email": "support@cvm-dev.com"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.18.0",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "start": "cd cvm-app && npm start",
+    "dev": "cd cvm-app && npm run dev",
+    "build": "cd cvm-app && npm run build",
+    "kiosk": "cd cvm-app && npm run electron:kiosk-simple",
+    "install-deps": "cd cvm-app && npm install && cd ../dvm-core-sdk1 && npm install",
+    "test": "cd cvm-app && npm test",
+    "lint": "cd cvm-app && npm run lint",
+    "setup": "npm run install-deps"
+  },
+  "devDependencies": {},
+  "directories": {
+    "doc": "docs"
+  }
+}
