@@ -98,11 +98,10 @@ jobs:
         with:
           status: ${{ job.status }}
           channel: '#deployment'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-          message: |
+          text: |
             CVM 서버 카페24 배포 ${{ job.status }}
             브랜치: ${{ github.ref_name }}
             커밋: ${{ github.sha }}
-            시간: $(date)
+            시간: ${{ github.event.head_commit.timestamp }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
