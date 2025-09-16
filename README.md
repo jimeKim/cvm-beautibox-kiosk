@@ -154,4 +154,4 @@ CVM (Cosmetic Vending Machine) is a professional kiosk solution designed specifi
 
 ---
 
-Made with ❤️ by the CVM Team
+Made with ❤️ by the CVM Team"# GitHub Actions Ȱ��ȭ" 
