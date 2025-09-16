@@ -13,9 +13,19 @@
 
 **CVM BeautiBox**는 화장품 자동판매기용 Electron 기반 키오스크 애플리케이션입니다. React + TypeScript로 개발되었으며, 터치스크린 인터페이스를 통해 사용자가 쉽게 화장품을 구매할 수 있는 완전한 키오스크 솔루션을 제공합니다.
 
-**Version:** 2.7.2  
-**Release Date:** 2025-01-30  
+**Version:** 2.7.3  
+**Release Date:** 2025-09-16  
 **Development Team:** CVM Development Team
+
+## 🚀 최신 업데이트 v2.7.3
+
+### DVM Core SDK v2.0.0 완전 통합
+- **실제 하드웨어 90% 통합**: Arduino, 카메라, 프린터, 센서 실제 제어
+- **Arduino relay-simple.ino v3.0.0**: 115200 baud 시리얼 통신
+- **Logitech C920**: 1920x1080@30fps 고화질 실시간 촬영
+- **DP-QW410 열전사 프린터**: ESC/POS 명령어로 실제 영수증 출력
+- **NPN 센서**: 50ms 방진 처리로 안정적인 사용자 감지
+- **5x8 매트릭스**: 40개 버튼 실시간 제어 (7바이트 이진 패킷)
 
 ## 주요 기능
 
@@ -32,11 +42,12 @@
 - **결제 검증**: 실시간 결제 상태 확인 및 오류 처리
 - **영수증 발행**: 디지털 영수증 자동 생성
 
-### 하드웨어 통합
-- **프린터 연동**: 자동 영수증 인쇄 시스템
-- **카메라 연동**: 상품 촬영 및 사용자 사진 기능
-- **Arduino 제어보드**: 자동판매기 하드웨어 완전 제어
-- **센서 통합**: 재고 감지 및 상태 모니터링
+### 하드웨어 통합 (v2.7.3 신규)
+- **Arduino 제어보드**: 자동판매기 하드웨어 완전 제어 (COM7, 115200 baud)
+- **실시간 센서**: NPN 근접센서로 사용자 접근 감지 (50ms 방진)
+- **고화질 카메라**: Logitech C920으로 실시간 사진 촬영
+- **열전사 프린터**: DP-QW410으로 실제 영수증 및 사진 인쇄
+- **매트릭스 제어**: 5x8 (40개) 버튼 실시간 제어
 
 ### 보안 및 관리
 - **관리자 패널**: Ctrl+Alt+A로 접근 가능한 관리 인터페이스
@@ -60,17 +71,18 @@
 - **Supabase** - 백엔드 서비스
 - **SerialPort** - 하드웨어 통신
 
-### 하드웨어 & 제어
-- **Arduino 제어보드** - 자동판매기 하드웨어 제어
-- **프린터 SDK** - 영수증 및 사진 인쇄
-- **카메라 API** - 실시간 사진 촬영
-- **센서 통합** - 재고 및 상태 모니터링
+### 하드웨어 & 제어 (v2.7.3)
+- **DVM Core SDK v2.0.0** - 실제 하드웨어 통합 SDK
+- **Arduino relay-simple.ino v3.0.0** - 제어보드 펌웨어
+- **Logitech C920** - USB 3.0 고화질 카메라
+- **DP-QW410** - ESC/POS 열전사 프린터
+- **NPN 센서** - 실시간 근접 감지
 
 ## 프로젝트 구조
 
 ```
 CVM/
-├── cvm-app/                     # 메인 키오스크 애플리케이션
+├── cvm-app/                     # 메인 키오스크 애플리케이션 (v2.7.3)
 │   ├── src/                     # React 프론트엔드 소스
 │   │   ├── components/          # 재사용 UI 컴포넌트
 │   │   ├── pages/              # 화면 컴포넌트
@@ -83,7 +95,7 @@ CVM/
 │   ├── scripts/                # 빌드 및 유틸리티 스크립트
 │   ├── build/                  # 빌드 리소스
 │   └── docs/                   # 프로젝트 문서
-├── dvm-core-sdk1/              # 코어 SDK (ZIP 포함)
+├── dvm-core-sdk1/              # DVM Core SDK v2.0.0 (실제 하드웨어)
 ├── cvm-sdk1/                   # CVM SDK (ZIP 포함)
 └── *.ps1, *.bat               # 실행 스크립트들
 ```
@@ -96,6 +108,13 @@ CVM/
 - **Windows**: 10 이상 (권장)
 - **메모리**: 8GB RAM 이상
 - **저장공간**: 2GB 이상
+
+### 하드웨어 요구사항 (v2.7.3)
+- **Arduino**: relay-simple.ino v3.0.0 펌웨어 (COM7 포트)
+- **카메라**: Logitech C920 또는 호환 USB 카메라
+- **프린터**: DP-QW410 열전사 프린터 (80mm 용지)
+- **센서**: NPN 근접센서 (50cm 감지 범위)
+- **매트릭스**: 5x8 (40개) 버튼 제어보드
 
 ### 설치 및 실행
 
@@ -111,7 +130,22 @@ cd cvm-app
 npm install
 ```
 
-3. **개발 모드 실행**
+3. **하드웨어 테스트 (v2.7.3)**
+```bash
+# DVM Core SDK v2.0.0 하드웨어 테스트
+node test-dvm-sdk.js
+
+# Arduino 제어보드 테스트
+node scripts/controller-optimized-test.js
+
+# 프린터 테스트
+node scripts/printer-advanced-test.js
+
+# 카메라 테스트
+node scripts/camera-test.js
+```
+
+4. **개발 모드 실행**
 ```bash
 # 웹 개발 모드
 npm run dev
@@ -120,9 +154,9 @@ npm run dev
 npm run electron:dev
 ```
 
-4. **키오스크 모드 실행**
+5. **키오스크 모드 실행**
 ```bash
-# 프로덕션 키오스크 모드
+# 프로덕션 키오스크 모드 (실제 하드웨어 연동)
 npm run electron:kiosk-simple
 ```
 
@@ -151,19 +185,38 @@ npm run build:all
 npm run build:kiosk
 ```
 
-## 하드웨어 테스트
+## 하드웨어 설정 가이드 (v2.7.3)
 
-프로젝트에는 각 하드웨어 컴포넌트를 테스트할 수 있는 스크립트들이 포함되어 있습니다:
+### Arduino 설정
+```yaml
+포트: COM7
+Baud Rate: 115200
+펌웨어: relay-simple.ino v3.0.0
+기능: 40개 매트릭스 버튼 제어, 센서 감지
+```
 
-```bash
-# Arduino 제어보드 테스트
-node scripts/controller-optimized-test.js
+### 카메라 설정
+```yaml
+모델: Logitech C920
+해상도: 1920x1080 @ 30fps
+연결: USB 3.0
+저장: ./photos 디렉토리
+```
 
-# 프린터 테스트
-node scripts/printer-advanced-test.js
+### 프린터 설정
+```yaml
+모델: DP-QW410
+용지: 80mm 열전사 롤지
+명령어: ESC/POS
+기능: 영수증 출력, 자동 용지 절단
+```
 
-# 카메라 테스트
-node scripts/camera-test.js
+### 센서 설정
+```yaml
+타입: NPN 근접센서
+감지 거리: 50cm (기본값)
+방진 처리: 50ms
+핀: Arduino PIN 8
 ```
 
 ## 관리 및 모니터링
@@ -175,6 +228,15 @@ node scripts/camera-test.js
 - 애플리케이션 로그: `logs/app.log`
 - 하드웨어 로그: `logs/hardware.log`
 - 거래 로그: `logs/transactions.log`
+
+### 시스템 상태 모니터링 (v2.7.3)
+```javascript
+// DVM Core SDK v2.0.0 상태 확인
+const dvm = new DVMSDK();
+await dvm.initialize();
+const status = dvm.getSystemStatus();
+// { connected: true, sensor: true, camera: true, controller: true, printer: true }
+```
 
 ## 개발 가이드
 
@@ -196,10 +258,10 @@ npm run test:coverage # 커버리지 확인
 ## 문서
 
 - [시스템 사양서](cvm-app/CVM-SYSTEM-SPECIFICATION.md)
+- [변경 로그](cvm-app/CHANGELOG.md) - **v2.7.3 DVM Core SDK v2.0.0 업데이트**
 - [실행 가이드](cvm-app/CVM-실행가이드.txt)
 - [GitHub 설정 가이드](cvm-app/QUICK-GITHUB-SETUP.md)
 - [키오스크 통합 가이드](cvm-app/docs/KIOSK_INTEGRATION_GUIDE.md)
-- [변경 로그](cvm-app/CHANGELOG.md)
 
 ## 라이선스
 
@@ -217,4 +279,4 @@ npm run test:coverage # 커버리지 확인
 
 ---
 
-**CVM BeautiBox** - 차세대 화장품 자동판매기 키오스크 솔루션
+**CVM BeautiBox v2.7.3** - 실제 하드웨어 통합 완료! 차세대 화장품 자동판매기 키오스크 솔루션
