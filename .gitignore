@@ -1,0 +1,135 @@
+# Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+*/package-lock.json
+
+# Build outputs
+dist/
+*/dist/
+build/
+*/build/
+release/
+*/release/
+out/
+*/out/
+
+# Electron build artifacts
+dist-electron/
+*/dist-electron/
+*.exe
+*.dmg
+*.deb
+*.AppImage
+*.snap
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*/.env*
+
+# Logs
+logs/
+*.log
+log.txt
+*/logs/
+*/log.txt
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+.nyc_output/
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows specific
+*.lnk
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Hardware test outputs
+camera-photos/
+*/camera-photos/
+printer-test-output/
+*/printer-test-output/
+
+# Supabase
+.supabase/
+
+# Local database
+*.db
+*.sqlite
+*.sqlite3
+
+# Prisma
+prisma/dev.db
+
+# Arduino compiled files
+*.hex
+*.elf
+*.o
+
+# ZIP files (keeping source SDK)
+*.zip
+!dvm-core-sdk*.zip
+!cvm-sdk*.zip
+
+# Specific large directories to exclude
+cvm-sdk/
+dvm-core-sdk/
+sdk-test-project/
+
+# Keep important documentation and configs
+!README.md
+!package.json
+!tsconfig.json
+!vite.config.ts
+!electron-builder.yml
+!*.md
