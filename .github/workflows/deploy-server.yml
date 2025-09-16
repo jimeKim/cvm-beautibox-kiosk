@@ -1,0 +1,108 @@
+name: Deploy CVM Server to Cafe24
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'server/**'
+      - 'src/services/**'
+      - 'package.json'
+  workflow_dispatch:
+
+jobs:
+  deploy-to-cafe24:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build server project
+        run: |
+          npm run build:server
+          # 또는 서버 전용 빌드 명령
+      
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          # 필요한 파일들만 복사
+          cp -r dist/ deploy/
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          
+          # 환경 설정 파일 (프로덕션용)
+          cp .env.production deploy/.env
+          
+          # 서버 관련 파일들
+          if [ -d "server" ]; then
+            cp -r server/ deploy/
+          fi
+          
+          # ZIP 파일 생성
+          cd deploy
+          zip -r ../cvm-server-$(date +%Y%m%d-%H%M%S).zip .
+          cd ..
+      
+      - name: Deploy to Cafe24 via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.CAFE24_FTP_HOST }}
+          username: ${{ secrets.CAFE24_FTP_USER }}
+          password: ${{ secrets.CAFE24_FTP_PASSWORD }}
+          local-dir: ./deploy/
+          server-dir: /www/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.env.local
+            **/.env.development
+      
+      - name: SSH Commands (서버 재시작 등)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.CAFE24_SSH_HOST }}
+          username: ${{ secrets.CAFE24_SSH_USER }}
+          password: ${{ secrets.CAFE24_SSH_PASSWORD }}
+          script: |
+            cd /www
+            
+            # Node.js 의존성 설치 (프로덕션만)
+            npm install --production
+            
+            # PM2로 서버 재시작 (또는 다른 프로세스 매니저)
+            pm2 restart cvm-server || pm2 start ecosystem.config.js
+            
+            # 또는 단순 재시작
+            # pkill -f "node.*cvm-server"
+            # nohup npm start > /dev/null 2>&1 &
+            
+            echo "CVM 서버 배포 완료: $(date)"
+      
+      - name: Deployment notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployment'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          message: |
+            CVM 서버 카페24 배포 ${{ job.status }}
+            브랜치: ${{ github.ref_name }}
+            커밋: ${{ github.sha }}
+            시간: $(date)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

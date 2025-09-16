@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카메라 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .video-container {
+            position: relative;
+            margin: 20px 0;
+        }
+        video {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        canvas {
+            display: none;
+        }
+        .captured-image {
+            max-width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📷 카메라 하드웨어 테스트</h1>
+        
+        <div id="status" class="status info">
+            카메라 테스트를 시작하려면 "카메라 시작" 버튼을 클릭하세요.
+        </div>
+
+        <div class="controls">
+            <button id="startBtn" onclick="startCamera()">카메라 시작</button>
+            <button id="stopBtn" onclick="stopCamera()" disabled>카메라 중지</button>
+            <button id="captureBtn" onclick="capturePhoto()" disabled>사진 촬영</button>
+            <button id="testBtn" onclick="testCamera()">카메라 테스트</button>
+        </div>
+
+        <div class="video-container">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div id="capturedImage"></div>
+
+        <div id="deviceInfo"></div>
+    </div>
+
+    <script>
+        let stream = null;
+        let devices = [];
+
+        // 상태 업데이트 함수
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        // 카메라 시작
+        async function startCamera() {
+            try {
+                updateStatus('카메라에 접근 중...', 'info');
+                
+                // 사용 가능한 장치 확인
+                devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length === 0) {
+                    updateStatus('❌ 연결된 카메라 장치가 없습니다.', 'error');
+                    return;
+                }
+
+                updateStatus(`✅ ${videoDevices.length}개의 카메라 장치 발견`, 'success');
+                
+                // 장치 정보 표시
+                displayDeviceInfo(videoDevices);
+
+                // 카메라 스트림 시작
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        facingMode: 'user'
+                    }
+                });
+
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                
+                updateStatus('✅ 카메라 스트림 시작 성공', 'success');
+                
+                // 버튼 상태 업데이트
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('captureBtn').disabled = false;
+
+            } catch (error) {
+                console.error('카메라 시작 오류:', error);
+                updateStatus(`❌ 카메라 시작 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // 카메라 중지
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                
+                const video = document.getElementById('video');
+                video.srcObject = null;
+                
+                updateStatus('카메라 스트림이 중지되었습니다.', 'info');
+                
+                // 버튼 상태 업데이트
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('captureBtn').disabled = true;
+            }
+        }
+
+        // 사진 촬영
+        function capturePhoto() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+
+            if (video.videoWidth && video.videoHeight) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0);
+
+                const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                
+                const capturedDiv = document.getElementById('capturedImage');
+                capturedDiv.innerHTML = `
+                    <h3>촬영된 사진:</h3>
+                    <img src="${imageData}" class="captured-image" alt="촬영된 사진">
+                    <p>해상도: ${video.videoWidth} x ${video.videoHeight}</p>
+                    <p>파일 크기: ${Math.round(imageData.length * 0.75)} bytes</p>
+                `;
+
+                updateStatus('✅ 사진 촬영 성공', 'success');
+            } else {
+                updateStatus('❌ 비디오 스트림이 준비되지 않았습니다.', 'error');
+            }
+        }
+
+        // 카메라 테스트
+        async function testCamera() {
+            updateStatus('카메라 종합 테스트 시작...', 'info');
+            
+            try {
+                // 1. 장치 열거 테스트
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length === 0) {
+                    updateStatus('❌ 테스트 실패: 카메라 장치 없음', 'error');
+                    return;
+                }
+
+                // 2. 권한 테스트
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                
+                // 3. 스트림 정보 확인
+                const videoTrack = stream.getVideoTracks()[0];
+                const settings = videoTrack.getSettings();
+                
+                // 4. 테스트 결과
+                const testResult = {
+                    devices: videoDevices.length,
+                    resolution: `${settings.width}x${settings.height}`,
+                    frameRate: settings.frameRate,
+                    deviceName: videoTrack.label || 'Unknown Device'
+                };
+
+                updateStatus(`✅ 테스트 성공! 장치: ${testResult.devices}개, 해상도: ${testResult.resolution}, FPS: ${testResult.frameRate}`, 'success');
+                
+                // 스트림 정리
+                stream.getTracks().forEach(track => track.stop());
+
+            } catch (error) {
+                updateStatus(`❌ 테스트 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // 장치 정보 표시
+        function displayDeviceInfo(videoDevices) {
+            const deviceInfo = document.getElementById('deviceInfo');
+            deviceInfo.innerHTML = `
+                <h3>발견된 카메라 장치:</h3>
+                <ul>
+                    ${videoDevices.map((device, index) => `
+                        <li>${index + 1}. ${device.label || `Camera ${index + 1}`} (${device.deviceId.substring(0, 20)}...)</li>
+                    `).join('')}
+                </ul>
+            `;
+        }
+
+        // 페이지 로드 시 초기화
+        window.addEventListener('load', async () => {
+            try {
+                // 권한 상태 확인
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length > 0) {
+                    updateStatus(`✅ ${videoDevices.length}개의 카메라 장치가 발견되었습니다.`, 'success');
+                } else {
+                    updateStatus('⚠️ 카메라 장치가 발견되지 않았습니다. USB 연결을 확인해주세요.', 'error');
+                }
+            } catch (error) {
+                updateStatus(`❌ 장치 열거 실패: ${error.message}`, 'error');
+            }
+        });
+    </script>
+</body>
+</html> 

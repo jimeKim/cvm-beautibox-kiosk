@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 매트릭스 제어보드 테스트</title>
+    <style>
+        body {
+            font-family: 'Consolas', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border: 2px solid #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 8px;
+            background: #2a2a2a;
+        }
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            margin: 10px 0;
+        }
+        .matrix-btn {
+            padding: 10px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        .matrix-btn:hover {
+            background: #555;
+        }
+        .matrix-btn.active {
+            background: #ff0000;
+            border-color: #ff4444;
+        }
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .control-btn {
+            padding: 12px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .control-btn:hover {
+            background: #0088ff;
+        }
+        .control-btn.danger {
+            background: #cc0000;
+        }
+        .control-btn.danger:hover {
+            background: #ff0000;
+        }
+        .control-btn.success {
+            background: #00cc00;
+        }
+        .control-btn.success:hover {
+            background: #00ff00;
+        }
+        .log-area {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+        .status-bar {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-connected {
+            color: #00ff00;
+        }
+        .status-disconnected {
+            color: #ff0000;
+        }
+        .test-pattern {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .binary-display {
+            font-family: monospace;
+            background: #000;
+            color: #ffff00;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 매트릭스 제어보드 아두이노 테스트</h1>
+            <p>PC → 아두이노 → 제어보드 통신 테스트</p>
+            <p style="color: #ffff00;">⚠️ 아두이노에 arduino-matrix-test.ino 업로드 필요</p>
+        </div>
+
+        <div class="section">
+            <h3>📡 시리얼 포트 연결</h3>
+            <div class="status-bar">
+                <span>연결 상태: <span id="connectionStatus" class="status-disconnected">연결 안됨</span></span>
+                <span>포트: <span id="currentPort">없음</span></span>
+                <span>Baud Rate: <span id="currentBaud">115200</span></span>
+            </div>
+            <div class="control-panel">
+                <button class="control-btn success" onclick="connectSerial()">시리얼 포트 연결</button>
+                <button class="control-btn danger" onclick="disconnectSerial()">연결 해제</button>
+                <select id="baudRateSelect" onchange="updateBaudRate()">
+                    <option value="9600">9600</option>
+                    <option value="115200" selected>115200</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🎯 5x8 매트릭스 버튼 테스트</h3>
+            <div class="button-grid" id="matrixGrid">
+                <!-- 40개 버튼이 여기에 동적 생성됨 -->
+            </div>
+            <div class="control-panel">
+                <button class="control-btn" onclick="testSingleButton()">단일 버튼 테스트</button>
+                <button class="control-btn" onclick="testSequential()">순차 테스트</button>
+                <button class="control-btn" onclick="testPattern()">패턴 테스트</button>
+                <button class="control-btn danger" onclick="clearAll()">전체 끄기</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🔬 아두이노 명령어 전송</h3>
+            <div class="test-pattern">
+                <input type="number" id="testRow" placeholder="행 (1-5)" min="1" max="5" value="1">
+                <input type="number" id="testCol" placeholder="열 (1-8)" min="1" max="8" value="1">
+                <select id="testOnOff">
+                    <option value="1">ON</option>
+                    <option value="0">OFF</option>
+                </select>
+                <button class="control-btn" onclick="sendArduinoTestCommand()">명령어 전송</button>
+            </div>
+            <div class="test-pattern">
+                <input type="text" id="customCommand" placeholder="직접 명령어 입력 (예: B1, T111, STATUS)" style="flex: 1; padding: 8px;">
+                <button class="control-btn" onclick="sendCustomCommand()">전송</button>
+            </div>
+            <div class="binary-display" id="binaryDisplay">
+                전송 명령어: 없음
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📊 실시간 로그</h3>
+            <div class="control-panel">
+                <button class="control-btn" onclick="clearLog()">로그 지우기</button>
+                <button class="control-btn" onclick="downloadLog()">로그 다운로드</button>
+            </div>
+            <div class="log-area" id="logArea">
+                === 매트릭스 제어보드 테스트 시작 ===<br>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let port = null;
+        let reader = null;
+        let writer = null;
+        let isConnected = false;
+
+        // 매트릭스 버튼 생성
+        function createMatrixButtons() {
+            const grid = document.getElementById('matrixGrid');
+            for (let i = 1; i <= 40; i++) {
+                const button = document.createElement('button');
+                button.className = 'matrix-btn';
+                button.textContent = i;
+                button.onclick = () => clickMatrixButton(i);
+                button.id = `btn-${i}`;
+                grid.appendChild(button);
+            }
+        }
+
+        // 로그 출력
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('logArea');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff0000' : type === 'success' ? '#00ff00' : '#ffffff';
+            logArea.innerHTML += `<span style="color: #666">[${timestamp}]</span> <span style="color: ${color}">${message}</span><br>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // 시리얼 포트 연결
+        async function connectSerial() {
+            try {
+                if ('serial' in navigator) {
+                    port = await navigator.serial.requestPort();
+                    const baudRate = parseInt(document.getElementById('baudRateSelect').value);
+                    
+                    await port.open({ baudRate });
+                    
+                    reader = port.readable.getReader();
+                    writer = port.writable.getWriter();
+                    
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                    log('시리얼 포트 연결 성공!', 'success');
+                    
+                    // 데이터 수신 시작
+                    startReading();
+                } else {
+                    alert('이 브라우저는 Web Serial API를 지원하지 않습니다. Chrome 89+ 사용 필요');
+                }
+            } catch (error) {
+                log(`연결 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // 연결 해제
+        async function disconnectSerial() {
+            try {
+                if (reader) {
+                    await reader.cancel();
+                    reader = null;
+                }
+                if (writer) {
+                    writer.releaseLock();
+                    writer = null;
+                }
+                if (port) {
+                    await port.close();
+                    port = null;
+                }
+                isConnected = false;
+                updateConnectionStatus(false);
+                log('시리얼 포트 연결 해제', 'info');
+            } catch (error) {
+                log(`연결 해제 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // 연결 상태 업데이트
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            const portName = document.getElementById('currentPort');
+            
+            if (connected) {
+                status.textContent = '연결됨';
+                status.className = 'status-connected';
+                portName.textContent = 'COM11'; // 가정
+            } else {
+                status.textContent = '연결 안됨';
+                status.className = 'status-disconnected';
+                portName.textContent = '없음';
+            }
+        }
+
+        // 데이터 수신
+        async function startReading() {
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    const text = new TextDecoder().decode(value);
+                    log(`수신: ${text.trim()}`, 'success');
+                }
+            } catch (error) {
+                log(`데이터 수신 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 아두이노 명령어 전송
+        async function sendArduinoCommand(command) {
+            if (!isConnected || !writer) {
+                log('시리얼 포트가 연결되지 않았습니다', 'error');
+                return false;
+            }
+
+            try {
+                const commandData = new TextEncoder().encode(command + '\n');
+                await writer.write(commandData);
+                
+                document.getElementById('binaryDisplay').textContent = `전송 명령어: ${command}`;
+                log(`아두이노 명령 전송: ${command}`, 'info');
+                return true;
+            } catch (error) {
+                log(`전송 실패: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // 매트릭스 명령 전송 (아두이노 명령어 방식)
+        async function sendMatrixCommand(row, col, on) {
+            const command = `T${row}${col}${on}`;
+            const success = await sendArduinoCommand(command);
+            if (success) {
+                log(`매트릭스 명령: [${row},${col}] ${on ? 'ON' : 'OFF'}`, 'info');
+            }
+            return success;
+        }
+
+        // 매트릭스 버튼 클릭 (아두이노 버튼 명령어 방식)
+        async function clickMatrixButton(buttonId) {
+            const command = `B${buttonId}`;
+            const success = await sendArduinoCommand(command);
+            
+            if (success) {
+                // 아두이노가 항상 ON으로 보내므로 UI에서 토글 상태 시뮬레이션
+                const button = document.getElementById(`btn-${buttonId}`);
+                const isActive = button.classList.contains('active');
+                
+                if (!isActive) {
+                    button.classList.add('active');
+                    log(`버튼 ${buttonId} → ON`, 'success');
+                } else {
+                    button.classList.remove('active');
+                    log(`버튼 ${buttonId} → OFF (UI 토글)`, 'success');
+                }
+            }
+        }
+
+        // 직접 아두이노 명령어 전송
+        async function sendArduinoTestCommand() {
+            const row = parseInt(document.getElementById('testRow').value);
+            const col = parseInt(document.getElementById('testCol').value);
+            const on = parseInt(document.getElementById('testOnOff').value);
+
+            if (row < 1 || row > 5 || col < 1 || col > 8) {
+                log('잘못된 좌표입니다. 행(1-5), 열(1-8)', 'error');
+                return;
+            }
+
+            await sendMatrixCommand(row, col, on);
+        }
+
+        // 사용자 정의 명령어 전송
+        async function sendCustomCommand() {
+            const command = document.getElementById('customCommand').value.trim();
+            if (command) {
+                await sendArduinoCommand(command);
+            } else {
+                log('명령어를 입력해주세요', 'error');
+            }
+        }
+
+        // 테스트 함수들 (아두이노 명령어 방식)
+        async function testSingleButton() {
+            log('=== 단일 버튼 테스트 시작 ===', 'info');
+            await sendArduinoCommand('STATUS');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            for (let i = 0; i < 3; i++) {
+                await sendArduinoCommand('B1');  // 버튼 1 클릭
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            log('=== 단일 버튼 테스트 완료 ===', 'info');
+        }
+
+        async function testSequential() {
+            log('=== 순차 테스트 시작 ===', 'info');
+            await sendArduinoCommand('STATUS');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            for (let i = 1; i <= 40; i++) {
+                await sendArduinoCommand(`B${i}`);
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await sendArduinoCommand('CLEAR');
+            log('=== 순차 테스트 완료 ===', 'info');
+        }
+
+        async function testPattern() {
+            log('=== 패턴 테스트 시작 ===', 'info');
+            // 체스판 패턴
+            for (let r = 1; r <= 5; r++) {
+                for (let c = 1; c <= 8; c++) {
+                    const on = (r + c) % 2;
+                    await sendMatrixCommand(r, c, on);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            await clearAll();
+            log('=== 패턴 테스트 완료 ===', 'info');
+        }
+
+        async function clearAll() {
+            log('=== 전체 끄기 시작 ===', 'info');
+            await sendArduinoCommand('CLEAR');
+            
+            // UI 업데이트
+            for (let i = 1; i <= 40; i++) {
+                document.getElementById(`btn-${i}`).classList.remove('active');
+            }
+            log('=== 전체 끄기 완료 ===', 'success');
+        }
+
+        // Baud Rate 변경
+        function updateBaudRate() {
+            const baudRate = document.getElementById('baudRateSelect').value;
+            document.getElementById('currentBaud').textContent = baudRate;
+            if (isConnected) {
+                log(`Baud Rate 변경됨: ${baudRate} (재연결 필요)`, 'info');
+            }
+        }
+
+        // 로그 관리
+        function clearLog() {
+            document.getElementById('logArea').innerHTML = '=== 로그 지워짐 ===<br>';
+        }
+
+        function downloadLog() {
+            const logContent = document.getElementById('logArea').innerHTML
+                .replace(/<br>/g, '\n')
+                .replace(/<[^>]*>/g, '');
+            
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `matrix-test-log-${new Date().getTime()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 페이지 로드 시 실행
+        window.onload = function() {
+            createMatrixButtons();
+            log('아두이노 매트릭스 테스트 페이지 준비 완료!', 'success');
+            log('사전 준비:', 'info');
+            log('1. 아두이노에 arduino-matrix-test.ino 업로드', 'info');
+            log('2. 아두이노-제어보드 연결 확인', 'info');
+            log('3. 제어보드 전원 확인', 'info');
+            log('테스트 방법:', 'info');
+            log('1. 시리얼 포트 연결 버튼 클릭', 'info');
+            log('2. COM11 포트 선택', 'info');
+            log('3. STATUS 명령어로 아두이노 상태 확인', 'info');
+            log('4. 매트릭스 버튼 클릭하여 모터 작동 테스트', 'info');
+        };
+    </script>
+</body>
+</html>

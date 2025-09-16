@@ -1,0 +1,199 @@
+name: Release and Auto-Update
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '릴리스 버전 (예: v1.0.1)'
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NODE_OPTIONS: --max_old_space_size=4096
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Get version from tag or input
+        id: version
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ github.event.inputs.version }}"
+          } else {
+            $version = "${{ github.ref_name }}"
+          }
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "릴리스 버전: $version"
+        shell: powershell
+        
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Type check
+        run: npm run type-check
+        
+      - name: Lint check
+        run: npm run lint
+        
+      - name: Run tests
+        run: npm test -- --watchAll=false
+        
+      - name: Build application
+        run: npm run build
+        
+      - name: Build and publish Electron app
+        run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-${{ steps.version.outputs.VERSION }}
+          path: |
+            release/*.exe
+            release/*.yml
+            release/*.blockmap
+            release/latest.yml
+          retention-days: 30
+          
+      - name: Create release notes
+        id: release_notes
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $notes = @"
+          ## CVM 키오스크 $version 릴리스
+          
+          ### 📦 설치 파일
+          - **CVM-Kiosk-$version-Setup.exe**: 자동 설치 프로그램
+          - **latest.yml**: 자동 업데이트 메타데이터
+          
+          ### 🔄 자동 업데이트
+          - 기존 키오스크 기기는 자동으로 이 버전으로 업데이트됩니다
+          - 업데이트는 심야 시간(오전 2-5시)에 자동 설치됩니다
+          - 강제 즉시 업데이트: 환경변수 ``CVM_INSTALL_NOW=1`` 설정
+          
+          ### 📋 변경사항
+          - 새로운 기능 및 개선사항들이 포함되었습니다
+          - 보안 업데이트 및 성능 최적화
+          - 버그 수정 및 안정성 향상
+          
+          ### 🛠️ 수동 설치 방법
+          1. **CVM-Kiosk-$version-Setup.exe** 다운로드
+          2. 관리자 권한으로 실행
+          3. 설치 완료 후 자동 시작
+          
+          ### 📞 지원
+          문제 발생 시 [Issues](https://github.com/jimeKim/CVM-Kiosk-App/issues)에 신고해주세요.
+          "@
+          $notes | Out-File -FilePath release_notes.md -Encoding UTF8
+          echo "RELEASE_NOTES_FILE=release_notes.md" >> $env:GITHUB_OUTPUT
+        shell: powershell
+        
+      - name: Check if release exists
+        id: check_release
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          try {
+            $release = gh release view $version --json id 2>$null
+            if ($release) {
+              echo "RELEASE_EXISTS=true" >> $env:GITHUB_OUTPUT
+              echo "기존 릴리스 발견: $version"
+            } else {
+              echo "RELEASE_EXISTS=false" >> $env:GITHUB_OUTPUT
+              echo "새 릴리스 생성 필요: $version"
+            }
+          } catch {
+            echo "RELEASE_EXISTS=false" >> $env:GITHUB_OUTPUT
+            echo "새 릴리스 생성 필요: $version"
+          }
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          gh release create $version `
+            --title "CVM 키오스크 $version" `
+            --notes-file ${{ steps.release_notes.outputs.RELEASE_NOTES_FILE }} `
+            --latest `
+            release/*.exe `
+            release/*.yml `
+            release/*.blockmap
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Update existing release
+        if: steps.check_release.outputs.RELEASE_EXISTS == 'true'
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          echo "기존 릴리스 업데이트: $version"
+          
+          # 기존 에셋 제거 후 새 에셋 업로드
+          gh release upload $version release/*.exe release/*.yml release/*.blockmap --clobber
+          
+          # 릴리스 노트 업데이트
+          gh release edit $version --notes-file ${{ steps.release_notes.outputs.RELEASE_NOTES_FILE }}
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Notify deployment success
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          echo "✅ 릴리스 $version 배포 완료!"
+          echo "📦 키오스크 기기들이 자동으로 업데이트를 확인하고 다운로드합니다."
+          echo "🕒 설치는 심야 시간(오전 2-5시)에 자동으로 실행됩니다."
+        shell: powershell
+
+  # 선택적: 다른 플랫폼 빌드 (필요 시 활성화)
+  build-other-platforms:
+    if: false # 현재는 비활성화, 필요 시 true로 변경
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build for ${{ matrix.os }}
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            npm run build:linux
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            npm run build:mac
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

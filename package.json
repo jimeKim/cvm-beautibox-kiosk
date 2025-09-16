@@ -1,56 +1,186 @@
 {
-  "name": "cvm-beautibox-kiosk",
-  "version": "2.7.2",
-  "description": "CVM BeautiBox - 화장품 자동판매기용 Electron 기반 키오스크 애플리케이션 (React + TypeScript + 하드웨어 통합)",
-  "private": false,
-  "main": "cvm-app/electron/main-kiosk-simple.cjs",
-  "homepage": "https://github.com/jimeKim/cvm-beautibox-kiosk",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jimeKim/cvm-beautibox-kiosk.git"
-  },
-  "bugs": {
-    "url": "https://github.com/jimeKim/cvm-beautibox-kiosk/issues"
+  "name": "cvm-kiosk",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "main": "electron/main-commonjs.cjs",
+  "description": "CVM Kiosk Application - Professional Cosmetic Vending Machine Solution",
+  "homepage": "./",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:electron": "tsc --project tsconfig.node.json && tsc electron/main.ts --outDir dist-electron --target ES2020 --module ESNext --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck",
+    "preview": "vite preview",
+    "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
+    "electron:pack": "electron-builder",
+    "electron:dev": "concurrently \"npm run dev\" \"npm run electron\"",
+    "electron:kiosk": "cross-env ELECTRON=true npm run build && cross-env NODE_ENV=production electron electron/main-kiosk.js",
+    "electron:kiosk-fixed": "cross-env ELECTRON=true npm run build && cross-env NODE_ENV=production electron electron/main-kiosk-fixed.cjs",
+    "electron:kiosk-simple": "cross-env ELECTRON=true npm run build && node scripts/fix-paths.cjs && cross-env NODE_ENV=production electron electron/main-kiosk-simple.cjs",
+    "electron:build": "npm run build && electron-builder",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux",
+    "build:all": "npm run build && electron-builder --win --mac --linux",
+    "build:kiosk": "npm run build && electron-builder --win --config.productName=\"CVM Kiosk\" --config.directories.output=release-kiosk",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "version:patch": "npm version patch -m \"chore: bump %s\"",
+    "version:minor": "npm version minor -m \"chore: bump %s\"",
+    "version:major": "npm version major -m \"chore: bump %s\"",
+    "release": "npm run build && npm run dist:win",
+    "build:server": "vite build --mode production",
+    "deploy:cafe24": "npm run build:server && echo 'Server build completed for Cafe24 deployment'"
   },
   "keywords": [
     "cvm",
+    "kiosk",
     "cosmetic",
     "vending-machine",
-    "kiosk",
     "electron",
     "react",
     "typescript",
-    "hardware-integration",
-    "touch-screen",
     "pos-system",
-    "arduino",
-    "printer",
-    "camera",
-    "beautibox",
-    "retail",
-    "automation"
+    "touch-interface"
   ],
-  "author": {
-    "name": "CVM Development Team",
-    "email": "support@cvm-dev.com"
-  },
+  "author": "CVM Development Team",
   "license": "MIT",
+  "dependencies": {
+    "@electron-toolkit/utils": "^4.0.0",
+    "@supabase/supabase-js": "^2.51.0",
+    "dvm-core-sdk": "file:../dvm-core-sdk",
+    "clsx": "^2.0.0",
+    "crypto-js": "^4.2.0",
+    "electron-log": "^5.2.0",
+    "electron-updater": "^6.3.8",
+    "i18next": "^23.5.0",
+    "i18next-browser-languagedetector": "^7.1.0",
+    "lucide-react": "^0.263.0",
+    "pdf-to-printer": "^5.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-i18next": "^13.2.0",
+    "react-router-dom": "^6.8.0",
+    "serialport": "^13.0.0",
+    "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.27.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/crypto-js": "^4.2.2",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.19.7",
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.3",
+    "autoprefixer": "^10.4.15",
+    "babel-jest": "^30.0.4",
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3",
+    "electron": "^34.0.0",
+    "electron-auto-launch": "^5.0.7",
+    "electron-builder": "^24.0.0",
+    "electron-serve": "^2.1.1",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.6.0",
+    "jest-environment-jsdom": "^30.0.4",
+    "jest-transform-stub": "^2.0.0",
+    "postcss": "^8.4.28",
+    "prettier": "^3.0.0",
+    "tailwindcss": "^3.3.3",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vite-plugin-electron": "^0.12.0",
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "wait-on": "^7.0.1"
+  },
+  "build": {
+    "appId": "com.cvm.kiosk",
+    "productName": "CVM Kiosk",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jimeKim",
+        "repo": "cvm-beautibox-kiosk",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "signingHashAlgorithms": [],
+      "publish": ["github"]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CVM Kiosk",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "CVM-Kiosk-${version}-Setup.${ext}",
+      "differentialPackage": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/icon.icns",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "entitlements": null,
+      "entitlementsInherit": null
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility"
+    },
+    "extraMetadata": {
+      "main": "dist-electron/main.js"
+    }
+  },
   "engines": {
-    "node": ">=20.18.0",
-    "npm": ">=8.0.0"
-  },
-  "scripts": {
-    "start": "cd cvm-app && npm start",
-    "dev": "cd cvm-app && npm run dev",
-    "build": "cd cvm-app && npm run build",
-    "kiosk": "cd cvm-app && npm run electron:kiosk-simple",
-    "install-deps": "cd cvm-app && npm install && cd ../dvm-core-sdk1 && npm install",
-    "test": "cd cvm-app && npm test",
-    "lint": "cd cvm-app && npm run lint",
-    "setup": "npm run install-deps"
-  },
-  "devDependencies": {},
-  "directories": {
-    "doc": "docs"
+    "node": ">=20.18.0"
   }
 }
