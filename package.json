@@ -127,7 +127,7 @@
       {
         "provider": "github",
         "owner": "jimeKim",
-        "repo": "cvm-beautibox-kiosk",
+        "repo": "cvm-kiosk",
         "releaseType": "release"
       }
     ],

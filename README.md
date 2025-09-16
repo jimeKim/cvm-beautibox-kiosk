@@ -2,9 +2,9 @@
 
 **Professional Cosmetic Vending Machine Solution**
 
-[![GitHub Stars](https://img.shields.io/github/stars/jimeKim/cvm-beautibox-kiosk)](https://github.com/jimeKim/cvm-beautibox-kiosk/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/jimeKim/cvm-beautibox-kiosk)](https://github.com/jimeKim/cvm-beautibox-kiosk/network)
-[![License](https://img.shields.io/github/license/jimeKim/cvm-beautibox-kiosk)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/jimeKim/cvm-kiosk)](https://github.com/jimeKim/cvm-kiosk/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/jimeKim/cvm-kiosk)](https://github.com/jimeKim/cvm-kiosk/network)
+[![License](https://img.shields.io/github/license/jimeKim/cvm-kiosk)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.18.0-brightgreen)](https://nodejs.org/)
 [![Electron](https://img.shields.io/badge/electron-34.0-blue)](https://electronjs.org/)
 
@@ -26,14 +26,14 @@
 ### Installation
 ```bash
 # Download latest installer
-# https://github.com/jimeKim/cvm-beautibox-kiosk/releases/latest
+# https://github.com/jimeKim/cvm-kiosk/releases/latest
 # Run: CVM-Kiosk-2.0.0-Setup.exe
 ```
 
 ### Development
 ```bash
-git clone https://github.com/jimeKim/cvm-beautibox-kiosk.git
-cd cvm-beautibox-kiosk
+git clone https://github.com/jimeKim/cvm-kiosk.git
+cd cvm-kiosk
 npm install
 npm run electron:dev
 ```
@@ -63,7 +63,7 @@ npm run release
 ## 📦 Project Structure
 
 ```
-cvm-beautibox-kiosk/
+cvm-kiosk/
 ├── src/                    # React frontend source
 │   ├── components/         # React components
 │   ├── pages/             # Page components  
